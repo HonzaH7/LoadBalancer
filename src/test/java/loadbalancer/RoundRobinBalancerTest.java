@@ -1,16 +1,14 @@
 package loadbalancer;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class FakeBackend {
+class RoundRobinBalancerTest {
 
     private Backend s1;
     private Backend s2;
@@ -53,5 +51,17 @@ class FakeBackend {
         s2.setAlive(false);
         s3.setAlive(false);
         assertThrows(NoHealthyServerException.class, () -> rr.nextServer());
+    }
+
+    private static class FakeBackend implements Backend {
+        private final int port;
+        private boolean alive = true;
+
+        FakeBackend(int port) { this.port = port; }
+
+        public String getAddress() { return "localhost"; }
+        public int getPort() { return port; }
+        public boolean isAlive() { return alive; }
+        public void setAlive(boolean alive) { this.alive = alive; }
     }
 }

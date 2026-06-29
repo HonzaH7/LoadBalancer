@@ -1,7 +1,7 @@
-package utils;
+package loadbalancer;
 
 public class NoHealthyServerException extends RuntimeException {
-    String errorMessage;
-
-
+    public NoHealthyServerException(String message) {
+        super(message);
+    }
 }
