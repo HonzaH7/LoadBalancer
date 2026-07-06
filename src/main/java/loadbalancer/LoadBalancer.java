@@ -9,12 +9,12 @@ import java.util.List;
 
 public class LoadBalancer {
     private final ServerSocket serverSocket;
-    private final RoundRobinBalancer roundRobin;
+    private final RoundRobinStrategy roundRobin;
     private final List<Backend> listOfServers;
 
     public LoadBalancer(int port, List<Backend> listOfServers) throws IOException {
         this.serverSocket = new ServerSocket(port);
-        this.roundRobin = new RoundRobinBalancer(listOfServers);
+        this.roundRobin = new RoundRobinStrategy(listOfServers);
         this.listOfServers = listOfServers;
     }
 

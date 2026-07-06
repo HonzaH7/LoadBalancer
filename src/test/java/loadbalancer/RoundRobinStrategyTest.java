@@ -8,12 +8,12 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class RoundRobinBalancerTest {
+class RoundRobinStrategyTest {
 
     private Backend s1;
     private Backend s2;
     private Backend s3;
-    private RoundRobinBalancer rr;
+    private RoundRobinStrategy rr;
 
     @BeforeEach
     void setUp() {
@@ -26,7 +26,7 @@ class RoundRobinBalancerTest {
         servers.add(s2);
         servers.add(s3);
 
-        rr = new RoundRobinBalancer(servers);
+        rr = new RoundRobinStrategy(servers);
     }
 
     @Test
