@@ -13,8 +13,9 @@ public class Main {
         listOfServers.add(server1);
         listOfServers.add(server2);
         listOfServers.add(server3);
-        BalancingStrategy roundRobin = new  RoundRobinStrategy();
-        LoadBalancer loadBalancer = new LoadBalancer(8080, listOfServers, roundRobin);
+        //BalancingStrategy roundRobinStrategy = new RoundRobinStrategy();
+        BalancingStrategy randomStrategy = new RandomStrategy();
+        LoadBalancer loadBalancer = new LoadBalancer(8080, listOfServers, randomStrategy);
         new Thread(server1::start).start();
         new Thread(server2::start).start();
         new Thread(server3::start).start();

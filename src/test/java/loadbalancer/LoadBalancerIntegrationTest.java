@@ -14,24 +14,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class LoadBalancerIntegrationTest {
     private BackendServer b1;
     private BackendServer b2;
-    private LoadBalancer lb;
+    private LoadBalancer loadBalancer;
     private BalancingStrategy balancingStrategy;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setup() throws IOException {
         b1 = startBackend();
         b2 = startBackend();
         List<Backend> backends = new ArrayList<>();
         backends.add(b1);
         backends.add(b2);
         balancingStrategy = new RoundRobinStrategy();
-        lb = startLoadBalancer(backends, balancingStrategy);
+        loadBalancer = startLoadBalancer(backends, balancingStrategy);
     }
 
 
     @Test
     void returns200WhenBackendsAreHealthy() throws IOException {
-        assertEquals(200, sendGet(lb.getPort()));
+        assertEquals(200, sendGet(loadBalancer.getPort()));
     }
 
     @Test
@@ -39,7 +39,7 @@ class LoadBalancerIntegrationTest {
         b1.stop();
 
         for (int i = 0; i < 4; i++) {
-            assertEquals(200, sendGet(lb.getPort()));
+            assertEquals(200, sendGet(loadBalancer.getPort()));
         }
     }
 
@@ -47,7 +47,7 @@ class LoadBalancerIntegrationTest {
     void returns502WhenAllBackendsAreDead() throws IOException {
         b1.setAlive(false);
         b2.setAlive(false);
-        assertEquals(502, sendGet(lb.getPort()));
+        assertEquals(502, sendGet(loadBalancer.getPort()));
     }
 
     private BackendServer startBackend() throws IOException {
