@@ -59,7 +59,11 @@ class LoadBalancerIntegrationTest {
     }
 
     private LoadBalancer startLoadBalancer(List<Backend> backends, BalancingStrategy balancingStrategy) throws IOException {
-        LoadBalancer lb = new LoadBalancer(0, backends, balancingStrategy);
+        LoadBalancer lb = LoadBalancer.builder()
+                            .port(0)
+                            .backends(backends)
+                            .balancingStrategy(balancingStrategy)
+                            .build();
         Thread t = new Thread(lb::start);
         t.setDaemon(true);
         t.start();

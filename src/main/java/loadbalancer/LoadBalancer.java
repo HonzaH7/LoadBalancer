@@ -7,15 +7,53 @@ import java.net.Socket;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class LoadBalancer {
     private final ServerSocket serverSocket;
     private final BalancingStrategy balancingStrategy;
-    private final List<Backend> listOfServers;
+    private final List<Backend> backends;
 
-    public LoadBalancer(int port, List<Backend> listOfServers, BalancingStrategy balancingStrategy) throws IOException {
+    public static class Builder {
+        private int port = 0;
+        private BalancingStrategy balancingStrategy = new RoundRobinStrategy();
+        private int healthCheckInterval = 10000;
+        private List<Backend> listOfServers;
+
+        public Builder port(int port) {
+            this.port = port;
+            return this;
+        }
+        public Builder balancingStrategy(BalancingStrategy balancingStrategy) {
+            this.balancingStrategy = Objects.requireNonNull(balancingStrategy, "strategy must not be null");
+            return this;
+        }
+
+        public Builder healthCheckInterval(int healthCheckInterval) {
+            this.healthCheckInterval = healthCheckInterval;
+            return this;
+        }
+
+        public Builder backends(List<Backend> backends) {
+            this.listOfServers = List.copyOf(backends);
+            return this;
+        }
+
+        public LoadBalancer build() throws IOException {
+            if (listOfServers == null || listOfServers.isEmpty()) {
+                throw new IllegalArgumentException("LoadBalancer needs at least one backend");
+            }
+            return new LoadBalancer(port, listOfServers, balancingStrategy);
+        }
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    private LoadBalancer(int port, List<Backend> backends, BalancingStrategy balancingStrategy) throws IOException {
         this.serverSocket = new ServerSocket(port);
-        this.listOfServers = listOfServers;
+        this.backends = backends;
         this.balancingStrategy = balancingStrategy;
     }
 
@@ -36,7 +74,7 @@ public class LoadBalancer {
 
     public void startHealthCheck(int interval) {
         while(true) {
-            for (Backend server : listOfServers) {
+            for (Backend server : backends) {
                 HttpURLConnection connection = null;
                 try {
                     URL url = new URL("http://" + server.getAddress() + ":" + server.getPort());
@@ -62,7 +100,7 @@ public class LoadBalancer {
 
     private void handleRequest(Socket connection) {
         try (connection) {
-            for (int i = 0; i < listOfServers.size(); i++) {
+            for (int i = 0; i < backends.size(); i++) {
                 List<Backend> healthyServers = healthyServers();
 
                 if (healthyServers.isEmpty()) {
@@ -85,7 +123,7 @@ public class LoadBalancer {
 
     private List<Backend> healthyServers() {
         List<Backend> healthyServers = new ArrayList<>();
-        for (Backend server : listOfServers) {
+        for (Backend server : backends) {
             if (server.isAlive()) {
                 healthyServers.add(server);
             }
