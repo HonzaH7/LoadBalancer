@@ -15,6 +15,7 @@ class LoadBalancerIntegrationTest {
     private BackendServer b1;
     private BackendServer b2;
     private LoadBalancer lb;
+    private BalancingStrategy balancingStrategy;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -23,7 +24,8 @@ class LoadBalancerIntegrationTest {
         List<Backend> backends = new ArrayList<>();
         backends.add(b1);
         backends.add(b2);
-        lb = startLoadBalancer(backends);
+        balancingStrategy = new RoundRobinStrategy();
+        lb = startLoadBalancer(backends, balancingStrategy);
     }
 
 
@@ -41,6 +43,13 @@ class LoadBalancerIntegrationTest {
         }
     }
 
+    @Test
+    void returns502WhenAllBackendsAreDead() throws IOException {
+        b1.setAlive(false);
+        b2.setAlive(false);
+        assertEquals(502, sendGet(lb.getPort()));
+    }
+
     private BackendServer startBackend() throws IOException {
         BackendServer backend = new BackendServer(0, "localhost");
         Thread t = new Thread(backend::start);
@@ -49,8 +58,8 @@ class LoadBalancerIntegrationTest {
         return backend;
     }
 
-    private LoadBalancer startLoadBalancer(List<Backend> backends) throws IOException {
-        LoadBalancer lb = new LoadBalancer(0, backends);
+    private LoadBalancer startLoadBalancer(List<Backend> backends, BalancingStrategy balancingStrategy) throws IOException {
+        LoadBalancer lb = new LoadBalancer(0, backends, balancingStrategy);
         Thread t = new Thread(lb::start);
         t.setDaemon(true);
         t.start();

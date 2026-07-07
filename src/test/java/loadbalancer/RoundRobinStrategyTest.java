@@ -13,7 +13,8 @@ class RoundRobinStrategyTest {
     private Backend s1;
     private Backend s2;
     private Backend s3;
-    private RoundRobinStrategy rr;
+    private BalancingStrategy rr;
+    private List<Backend> servers;
 
     @BeforeEach
     void setUp() {
@@ -21,36 +22,28 @@ class RoundRobinStrategyTest {
         s2 = new FakeBackend(8082);
         s3 = new FakeBackend(8083);
 
-        List<Backend> servers = new ArrayList<>();
+        servers = new ArrayList<>();
         servers.add(s1);
         servers.add(s2);
         servers.add(s3);
 
-        rr = new RoundRobinStrategy(servers);
+        rr = new RoundRobinStrategy();
     }
 
     @Test
     void returnsServersInRoundRobinOrder() {
-        assertEquals(8081, rr.nextServer().getPort());
-        assertEquals(8082, rr.nextServer().getPort());
-        assertEquals(8083, rr.nextServer().getPort());
-        assertEquals(8081, rr.nextServer().getPort());
+        assertEquals(8081, rr.select(servers).getPort());
+        assertEquals(8082, rr.select(servers).getPort());
+        assertEquals(8083, rr.select(servers).getPort());
+        assertEquals(8081, rr.select(servers).getPort());
     }
 
     @Test
-    void skipsDeadServers() {
-        s2.setAlive(false);
+    void returnsServersThatBelongInTheList() {
+        servers.remove(1);
         for (int i = 0; i < 10; i++) {
-            assertNotEquals(8082, rr.nextServer().getPort());
+            assertNotEquals(8082, rr.select(servers).getPort());
         }
-    }
-
-    @Test
-    void throwsWhenAllServersAreDead() {
-        s1.setAlive(false);
-        s2.setAlive(false);
-        s3.setAlive(false);
-        assertThrows(NoHealthyServerException.class, () -> rr.nextServer());
     }
 
     private static class FakeBackend implements Backend {

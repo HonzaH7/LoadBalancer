@@ -5,17 +5,18 @@ import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 
 public class LoadBalancer {
     private final ServerSocket serverSocket;
-    private final RoundRobinStrategy roundRobin;
+    private final BalancingStrategy balancingStrategy;
     private final List<Backend> listOfServers;
 
-    public LoadBalancer(int port, List<Backend> listOfServers) throws IOException {
+    public LoadBalancer(int port, List<Backend> listOfServers, BalancingStrategy balancingStrategy) throws IOException {
         this.serverSocket = new ServerSocket(port);
-        this.roundRobin = new RoundRobinStrategy(listOfServers);
         this.listOfServers = listOfServers;
+        this.balancingStrategy = balancingStrategy;
     }
 
     public int getPort() {
@@ -61,15 +62,14 @@ public class LoadBalancer {
 
     private void handleRequest(Socket connection) {
         try (connection) {
-            int attempts = listOfServers.size();
-            for (int i = 0; i < attempts; i++) {
-                Backend server;
-                try {
-                    server = roundRobin.nextServer();
-                } catch (NoHealthyServerException e) {
+            for (int i = 0; i < listOfServers.size(); i++) {
+                List<Backend> healthyServers = healthyServers();
+
+                if (healthyServers.isEmpty()) {
                     break;
                 }
 
+                Backend server = balancingStrategy.select(healthyServers);
                 try (Socket backendSocket = new Socket(server.getAddress(), server.getPort())) {
                     backendSocket.getInputStream().transferTo(connection.getOutputStream());
                     return;
@@ -81,6 +81,16 @@ public class LoadBalancer {
         } catch (IOException e) {
             System.err.println("Error: " + e.getMessage());
         }
+    }
+
+    private List<Backend> healthyServers() {
+        List<Backend> healthyServers = new ArrayList<>();
+        for (Backend server : listOfServers) {
+            if (server.isAlive()) {
+                healthyServers.add(server);
+            }
+        }
+        return healthyServers;
     }
 
     private void sendBadGateway(Socket connection) throws IOException {
