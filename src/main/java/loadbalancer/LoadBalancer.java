@@ -101,28 +101,34 @@ public class LoadBalancer {
     }
 
     void checkHealthOnce() {
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (Backend server : backends) {
-            HttpURLConnection connection = null;
-            boolean nowAlive;
-            try {
-                URL url = new URL("http://" + server.getAddress() + ":" + server.getPort());
-                connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                int statusCode = connection.getResponseCode();
-                nowAlive = (statusCode == 200);
-            } catch (IOException e) {
-                nowAlive = false;
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
-            boolean wasAlive = server.isAlive();
-            if (wasAlive != nowAlive) {
-                notifyListeners(server, nowAlive);
-            }
-            server.setAlive(nowAlive);
+            futures.add(CompletableFuture.runAsync(() -> checkServer(server)));
         }
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    }
+
+    private void checkServer(Backend server) {
+        HttpURLConnection connection = null;
+        boolean nowAlive;
+        try {
+            URL url = new URL("http://" + server.getAddress() + ":" + server.getPort());
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            int statusCode = connection.getResponseCode();
+            nowAlive = (statusCode == 200);
+        } catch (IOException e) {
+            nowAlive = false;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+        boolean wasAlive = server.isAlive();
+        if (wasAlive != nowAlive) {
+            notifyListeners(server, nowAlive);
+        }
+        server.setAlive(nowAlive);
     }
 
     private void handleRequest(Socket connection) {
