@@ -8,12 +8,16 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class LoadBalancer {
     private final ServerSocket serverSocket;
     private final BalancingStrategy balancingStrategy;
     private final List<Backend> backends;
     private final List<HealthListener> listeners = new ArrayList<>();
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     public static class Builder {
         private int port = 0;
@@ -84,14 +88,7 @@ public class LoadBalancer {
     }
 
     public void startHealthCheck(int interval) {
-        while (true) {
-            checkHealthOnce();
-            try {
-                Thread.sleep(interval);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        scheduler.scheduleAtFixedRate(this::checkHealthOnce, 0, interval, TimeUnit.MILLISECONDS);
     }
 
     void checkHealthOnce() {

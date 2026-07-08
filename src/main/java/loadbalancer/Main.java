@@ -25,7 +25,7 @@ public class Main {
         new Thread(server2::start).start();
         new Thread(server3::start).start();
         int interval = args.length > 0 ? Integer.parseInt(args[0]) : 10000;
-        new Thread(() -> loadBalancer.startHealthCheck(interval)).start();
+        loadBalancer.startHealthCheck(interval);
         loadBalancer.start();
     }
 }
