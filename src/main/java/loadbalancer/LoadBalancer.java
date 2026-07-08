@@ -13,6 +13,7 @@ public class LoadBalancer {
     private final ServerSocket serverSocket;
     private final BalancingStrategy balancingStrategy;
     private final List<Backend> backends;
+    private final List<HealthListener> listeners = new ArrayList<>();
 
     public static class Builder {
         private int port = 0;
@@ -57,6 +58,16 @@ public class LoadBalancer {
         this.balancingStrategy = balancingStrategy;
     }
 
+    public void addHealthListener(HealthListener listener) {
+        listeners.add(listener);
+    }
+
+    private void notifyListeners(Backend server, boolean alive) {
+        for (HealthListener listener : listeners) {
+            listener.onHealthChange(server, alive);
+        }
+    }
+
     public int getPort() {
         return serverSocket.getLocalPort();
     }
@@ -73,28 +84,38 @@ public class LoadBalancer {
     }
 
     public void startHealthCheck(int interval) {
-        while(true) {
-            for (Backend server : backends) {
-                HttpURLConnection connection = null;
-                try {
-                    URL url = new URL("http://" + server.getAddress() + ":" + server.getPort());
-                    connection = (HttpURLConnection) url.openConnection();
-                    connection.setRequestMethod("GET");
-                    int statusCode = connection.getResponseCode();
-                    server.setAlive(statusCode == 200);
-                } catch (IOException e) {
-                    server.setAlive(false);
-                } finally {
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
-                }
-            }
+        while (true) {
+            checkHealthOnce();
             try {
                 Thread.sleep(interval);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    void checkHealthOnce() {
+        for (Backend server : backends) {
+            HttpURLConnection connection = null;
+            boolean nowAlive;
+            try {
+                URL url = new URL("http://" + server.getAddress() + ":" + server.getPort());
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                int statusCode = connection.getResponseCode();
+                nowAlive = (statusCode == 200);
+            } catch (IOException e) {
+                nowAlive = false;
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+            boolean wasAlive = server.isAlive();
+            if (wasAlive != nowAlive) {
+                notifyListeners(server, nowAlive);
+            }
+            server.setAlive(nowAlive);
         }
     }
 
