@@ -8,6 +8,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +19,7 @@ public class LoadBalancer {
     private final List<Backend> backends;
     private final List<HealthListener> listeners = new ArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ExecutorService requestPool = Executors.newFixedThreadPool(50);
 
     public static class Builder {
         private int port = 0;
@@ -80,7 +82,7 @@ public class LoadBalancer {
         while (true) {
             try {
                 Socket connection = serverSocket.accept();
-                new Thread(() -> handleRequest(connection)).start();
+                requestPool.submit(() -> handleRequest(connection));
             } catch (IOException e) {
                 System.err.println("Error: " + e.getMessage());
             }
