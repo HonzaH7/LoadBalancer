@@ -19,18 +19,25 @@ public class LoadBalancer {
     private final List<Backend> backends;
     private final List<HealthListener> listeners = new ArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    private final ExecutorService requestPool = Executors.newFixedThreadPool(50);
+    private final ExecutorService requestPool;
 
     public static class Builder {
         private int port = 0;
         private BalancingStrategy balancingStrategy = new RoundRobinStrategy();
         private int healthCheckInterval = 10000;
         private List<Backend> listOfServers;
+        private int poolSize = 50;
 
         public Builder port(int port) {
             this.port = port;
             return this;
         }
+
+        public Builder poolSize(int poolSize) {
+            this.poolSize = poolSize;
+            return this;
+        }
+
         public Builder balancingStrategy(BalancingStrategy balancingStrategy) {
             this.balancingStrategy = Objects.requireNonNull(balancingStrategy, "strategy must not be null");
             return this;
@@ -50,7 +57,7 @@ public class LoadBalancer {
             if (listOfServers == null || listOfServers.isEmpty()) {
                 throw new IllegalArgumentException("LoadBalancer needs at least one backend");
             }
-            return new LoadBalancer(port, listOfServers, balancingStrategy);
+            return new LoadBalancer(port, listOfServers, balancingStrategy, poolSize);
         }
     }
 
@@ -58,10 +65,11 @@ public class LoadBalancer {
         return new Builder();
     }
 
-    private LoadBalancer(int port, List<Backend> backends, BalancingStrategy balancingStrategy) throws IOException {
+    private LoadBalancer(int port, List<Backend> backends, BalancingStrategy balancingStrategy, int poolSize) throws IOException {
         this.serverSocket = new ServerSocket(port);
         this.backends = backends;
         this.balancingStrategy = balancingStrategy;
+        this.requestPool = Executors.newFixedThreadPool(poolSize);
     }
 
     public void addHealthListener(HealthListener listener) {
