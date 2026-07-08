@@ -14,17 +14,15 @@ public class LoadBalancer {
     private final ServerSocket serverSocket;
     private final BalancingStrategy balancingStrategy;
     private final List<Backend> backends;
-    private final List<HealthListener> listeners = new CopyOnWriteArrayList<>();
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final ExecutorService requestPool;
-    private final int healthCheckInterval;
+    private final HealthChecker healthChecker;
 
     public static class Builder {
         private int port = 0;
         private BalancingStrategy balancingStrategy = new RoundRobinStrategy();
-        private int healthCheckInterval = 10000;
         private List<Backend> listOfServers;
         private int poolSize = 50;
+        private int healthCheckInterval = 10000;
 
         public Builder port(int port) {
             this.port = port;
@@ -41,13 +39,13 @@ public class LoadBalancer {
             return this;
         }
 
-        public Builder healthCheckInterval(int healthCheckInterval) {
-            this.healthCheckInterval = healthCheckInterval;
+        public Builder backends(List<Backend> backends) {
+            this.listOfServers = List.copyOf(backends);
             return this;
         }
 
-        public Builder backends(List<Backend> backends) {
-            this.listOfServers = List.copyOf(backends);
+        public Builder healthCheckInterval(int healthCheckInterval) {
+            this.healthCheckInterval = healthCheckInterval;
             return this;
         }
 
@@ -68,17 +66,15 @@ public class LoadBalancer {
         this.backends = backends;
         this.balancingStrategy = balancingStrategy;
         this.requestPool = Executors.newFixedThreadPool(poolSize);
-        this.healthCheckInterval = healthCheckInterval;
+        this.healthChecker = new HealthChecker(backends, healthCheckInterval);
+    }
+
+    public void startHealthCheck() {
+        healthChecker.startHealthCheck();
     }
 
     public void addHealthListener(HealthListener listener) {
-        listeners.add(listener);
-    }
-
-    private void notifyListeners(Backend server, boolean alive) {
-        for (HealthListener listener : listeners) {
-            listener.onHealthChange(server, alive);
-        }
+        healthChecker.addHealthListener(listener);
     }
 
     public int getPort() {
@@ -94,41 +90,6 @@ public class LoadBalancer {
                 System.err.println("Error: " + e.getMessage());
             }
         }
-    }
-
-    public void startHealthCheck() {
-        scheduler.scheduleAtFixedRate(this::checkHealthOnce, 0, healthCheckInterval, TimeUnit.MILLISECONDS);
-    }
-
-    void checkHealthOnce() {
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-        for (Backend server : backends) {
-            futures.add(CompletableFuture.runAsync(() -> checkServer(server)));
-        }
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-    }
-
-    private void checkServer(Backend server) {
-        HttpURLConnection connection = null;
-        boolean nowAlive;
-        try {
-            URL url = new URL("http://" + server.getAddress() + ":" + server.getPort());
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            int statusCode = connection.getResponseCode();
-            nowAlive = (statusCode == 200);
-        } catch (IOException e) {
-            nowAlive = false;
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-        boolean wasAlive = server.isAlive();
-        if (wasAlive != nowAlive) {
-            notifyListeners(server, nowAlive);
-        }
-        server.setAlive(nowAlive);
     }
 
     private void handleRequest(Socket connection) {

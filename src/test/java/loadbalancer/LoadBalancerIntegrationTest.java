@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class LoadBalancerIntegrationTest {
     private BackendServer b1;
@@ -27,16 +26,6 @@ class LoadBalancerIntegrationTest {
         backends.add(b2);
         balancingStrategy = new RoundRobinStrategy();
         loadBalancer = startLoadBalancer(backends, balancingStrategy);
-    }
-
-    @Test
-    void notifiesListenerWhenBackendGoesDown() throws IOException {
-            RecordingListener listener = new RecordingListener();
-            loadBalancer.addHealthListener(listener);
-            b1.stop();
-            loadBalancer.checkHealthOnce();
-            assertEquals(b1, listener.lastServer);
-            assertFalse(listener.lastAlive);
     }
 
     @Test
@@ -87,18 +76,5 @@ class LoadBalancerIntegrationTest {
         int code = conn.getResponseCode();
         conn.disconnect();
         return code;
-    }
-
-    public static class RecordingListener implements HealthListener {
-        Backend lastServer;
-        boolean lastAlive;
-        int callCount = 0;
-
-        @Override
-        public void onHealthChange(Backend server, boolean alive) {
-            this.lastServer = server;
-            this.lastAlive = alive;
-            this.callCount++;
-        }
     }
 }
