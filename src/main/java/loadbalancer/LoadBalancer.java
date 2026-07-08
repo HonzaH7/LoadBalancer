@@ -20,6 +20,7 @@ public class LoadBalancer {
     private final List<HealthListener> listeners = new ArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final ExecutorService requestPool;
+    private final int healthCheckInterval;
 
     public static class Builder {
         private int port = 0;
@@ -57,7 +58,7 @@ public class LoadBalancer {
             if (listOfServers == null || listOfServers.isEmpty()) {
                 throw new IllegalArgumentException("LoadBalancer needs at least one backend");
             }
-            return new LoadBalancer(port, listOfServers, balancingStrategy, poolSize);
+            return new LoadBalancer(port, listOfServers, balancingStrategy, poolSize, healthCheckInterval);
         }
     }
 
@@ -65,11 +66,12 @@ public class LoadBalancer {
         return new Builder();
     }
 
-    private LoadBalancer(int port, List<Backend> backends, BalancingStrategy balancingStrategy, int poolSize) throws IOException {
+    private LoadBalancer(int port, List<Backend> backends, BalancingStrategy balancingStrategy, int poolSize, int healthCheckInterval) throws IOException {
         this.serverSocket = new ServerSocket(port);
         this.backends = backends;
         this.balancingStrategy = balancingStrategy;
         this.requestPool = Executors.newFixedThreadPool(poolSize);
+        this.healthCheckInterval = healthCheckInterval;
     }
 
     public void addHealthListener(HealthListener listener) {
@@ -97,8 +99,8 @@ public class LoadBalancer {
         }
     }
 
-    public void startHealthCheck(int interval) {
-        scheduler.scheduleAtFixedRate(this::checkHealthOnce, 0, interval, TimeUnit.MILLISECONDS);
+    public void startHealthCheck() {
+        scheduler.scheduleAtFixedRate(this::checkHealthOnce, 0, healthCheckInterval, TimeUnit.MILLISECONDS);
     }
 
     void checkHealthOnce() {

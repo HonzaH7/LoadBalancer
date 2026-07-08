@@ -15,17 +15,19 @@ public class Main {
         listOfServers.add(server3);
         //BalancingStrategy roundRobinStrategy = new RoundRobinStrategy();
         BalancingStrategy randomStrategy = new RandomStrategy();
+        int interval = args.length > 0 ? Integer.parseInt(args[0]) : 10000;
         LoadBalancer loadBalancer = LoadBalancer.builder()
                                     .port(8080)
                                     .backends(listOfServers)
                                     .balancingStrategy(randomStrategy)
+                                    .healthCheckInterval(interval)
                                     .build();
 
         new Thread(server1::start).start();
         new Thread(server2::start).start();
         new Thread(server3::start).start();
-        int interval = args.length > 0 ? Integer.parseInt(args[0]) : 10000;
-        loadBalancer.startHealthCheck(interval);
+
+        loadBalancer.startHealthCheck();
         loadBalancer.start();
     }
 }
