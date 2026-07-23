@@ -1,0 +1,38 @@
+services:
+  # Three backend containers. They all listen on 8080 INSIDE their own
+  # container - no port clash, because each container has its own network.
+  # They are NOT published to the host: only the load balancer can reach
+  # them, over the internal compose network.
+  backend1:
+    image: loadbalancer:local
+    command: ["loadbalancer.BackendMain"]
+    environment:
+      PORT: 8080
+
+  backend2:
+    image: loadbalancer:local
+    command: ["loadbalancer.BackendMain"]
+    environment:
+      PORT: 8080
+
+  backend3:
+    image: loadbalancer:local
+    command: ["loadbalancer.BackendMain"]
+    environment:
+      PORT: 8080
+
+  # The load balancer. It is the only service exposed to the host (8080).
+  # BACKENDS uses the service names above as hostnames - compose gives each
+  # service a DNS name on the internal network. That is service discovery.
+  loadbalancer:
+    image: loadbalancer:local
+    command: ["loadbalancer.LbMain"]
+    environment:
+      PORT: 8080
+      BACKENDS: "backend1:8080,backend2:8080,backend3:8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend1
+      - backend2
+      - backend3
