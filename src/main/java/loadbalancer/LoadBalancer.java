@@ -1,6 +1,9 @@
 package loadbalancer;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -94,15 +97,27 @@ public class LoadBalancer {
 
     private void handleRequest(Socket connection) {
         try (connection) {
+            BufferedReader clientIn = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream()));
+            List<String> requestLines = new ArrayList<>();
+            String line;
+            while ((line = clientIn.readLine()) != null && !line.isEmpty()) {
+                requestLines.add(line);
+            }
+
             for (int i = 0; i < backends.size(); i++) {
                 List<Backend> healthyServers = healthyServers();
-
                 if (healthyServers.isEmpty()) {
                     break;
                 }
-
                 Backend server = balancingStrategy.select(healthyServers);
                 try (Socket backendSocket = new Socket(server.getAddress(), server.getPort())) {
+                    OutputStream backendOut = backendSocket.getOutputStream();
+                    for (String requestLine : requestLines) {
+                        backendOut.write((requestLine + "\r\n").getBytes());
+                    }
+                    backendOut.write("\r\n".getBytes());
+                    backendOut.flush();
                     backendSocket.getInputStream().transferTo(connection.getOutputStream());
                     return;
                 } catch (IOException e) {

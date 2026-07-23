@@ -1,6 +1,8 @@
 package loadbalancer;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -40,6 +42,12 @@ public class BackendServer implements Backend {
                 Socket connection = serverSocket.accept();
                 new Thread(() -> {
                     try {
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream()));
+                        String line;
+                        while ((line = in.readLine()) != null && !line.isEmpty()) {
+
+                        }
                         String response = "HTTP/1.1 200 OK\r\n\r\nHello from port: " + getPort();
                         connection.getOutputStream().write(response.getBytes());
                         connection.close();
