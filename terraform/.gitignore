@@ -1,0 +1,7 @@
+# Terraform working files - never commit these
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+
+# Cluster credentials written by the local_file resource
+kubeconfig.yaml

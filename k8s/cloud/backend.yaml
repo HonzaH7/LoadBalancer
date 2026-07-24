@@ -1,0 +1,36 @@
+# Cloud variant of the backend: same as the local one, but the image is
+# pulled from GHCR (the cluster has no locally loaded image).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/honzah7/loadbalancer:latest   # pulled from GHCR
+          args: ["loadbalancer.BackendMain"]
+          env:
+            - name: PORT
+              value: "8080"
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080

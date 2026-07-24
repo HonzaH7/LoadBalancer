@@ -1,0 +1,38 @@
+# Cloud variant of the load balancer: image from GHCR, and the Service is
+# type LoadBalancer so DigitalOcean provisions a real public IP in front of it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadbalancer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loadbalancer
+  template:
+    metadata:
+      labels:
+        app: loadbalancer
+    spec:
+      containers:
+        - name: loadbalancer
+          image: ghcr.io/honzah7/loadbalancer:latest   # pulled from GHCR
+          env:
+            - name: PORT
+              value: "8080"
+            - name: BACKENDS
+              value: "backend:8080"
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer
+spec:
+  type: LoadBalancer          # DigitalOcean gives this a public IP
+  selector:
+    app: loadbalancer
+  ports:
+    - port: 80                # public port 80 (standard HTTP)
+      targetPort: 8080        # forwards to the LB container's 8080
