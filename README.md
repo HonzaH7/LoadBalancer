@@ -1,5 +1,7 @@
 # LoadBalancer
 
+![CI](https://github.com/HonzaH7/LoadBalancer/actions/workflows/ci.yml/badge.svg)
+
 A small HTTP load balancer written in plain Java (no frameworks), built as a learning
 project to practice clean design (SOLID, design patterns) and Java concurrency.
 
@@ -100,6 +102,37 @@ java -cp target/classes loadbalancer.Main
 
 An optional first argument sets the health check interval in milliseconds
 (default 10000).
+
+## Running with Docker
+
+The load balancer and each backend run as their own container. Build the image
+and start the whole stack (one load balancer in front of three backends) with
+Docker Compose:
+
+```
+docker compose up --build
+```
+
+Then visit `http://localhost:8080/`; requests are spread across the backends.
+
+The same image serves both roles: it defaults to the load balancer
+(`loadbalancer.LbMain`), and runs a backend when `CMD` is overridden with
+`loadbalancer.BackendMain`. Both are configured through the environment:
+
+- `PORT` — the port to listen on
+- `BACKENDS` — (load balancer only) comma-separated `host:port` list of backends
+
+## CI/CD
+
+Every push and pull request runs the pipeline in
+[.github/workflows/ci.yml](.github/workflows/ci.yml):
+
+1. **test** — compiles and runs the test suite on JDK 21.
+2. **docker** — builds the Docker image and, on push to `main`, publishes it to
+   the GitHub Container Registry (`ghcr.io/honzah7/loadbalancer`) tagged with both
+   `latest` and the commit SHA.
+
+The image is published only if the tests pass.
 
 ## Testing
 
