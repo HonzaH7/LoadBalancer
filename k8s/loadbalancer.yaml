@@ -1,0 +1,39 @@
+# The load balancer: one pod running LbMain (the image's default command),
+# pointed at the backend Service through the BACKENDS environment variable.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadbalancer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loadbalancer
+  template:
+    metadata:
+      labels:
+        app: loadbalancer
+    spec:
+      containers:
+        - name: loadbalancer
+          image: loadbalancer:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PORT
+              value: "8080"
+            - name: BACKENDS
+              value: "backend:8080"     # the backend Service - k8s DNS resolves this name
+          ports:
+            - containerPort: 8080
+---
+# A stable address for the load balancer (we will reach it via port-forward).
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer
+spec:
+  selector:
+    app: loadbalancer
+  ports:
+    - port: 8080
+      targetPort: 8080

@@ -1,0 +1,38 @@
+# A Deployment keeps a desired number of identical pods running.
+# Here: 3 backend pods, each running BackendMain from our image.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 3                       # keep 3 backend pods running at all times
+  selector:
+    matchLabels:
+      app: backend                  # this Deployment manages pods labelled app=backend
+  template:                         # the blueprint each pod is stamped from
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: loadbalancer:local
+          imagePullPolicy: IfNotPresent          # use the image we loaded, don't pull it
+          args: ["loadbalancer.BackendMain"]     # override CMD: run a backend, not the LB
+          env:
+            - name: PORT
+              value: "8080"
+          ports:
+            - containerPort: 8080
+---
+# A Service gives those pods one stable address and load-balances across them.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend                    # send traffic to any pod labelled app=backend
+  ports:
+    - port: 8080                    # the Service listens on 8080
+      targetPort: 8080              # and forwards to the pods' 8080
