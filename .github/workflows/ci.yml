@@ -26,13 +26,38 @@ jobs:
       - name: Run tests
         run: mvn -B test
 
-  # Job 2: build the Docker image - but only if the tests passed.
+  # Job 2: build the image and publish it to GHCR - but only if tests passed.
   docker:
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: read      # to check out the code
+      packages: write     # to push the image to GHCR
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
 
-      - name: Build the Docker image
-        run: docker build -t loadbalancer:ci .
+      # Log in to GitHub Container Registry. GITHUB_TOKEN is provided
+      # automatically for every run - nothing to create or store.
+      # Only needed when we actually publish (push to main), not on PRs.
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build with two tags: a moving "latest" and the immutable commit SHA.
+      - name: Build the image
+        run: |
+          docker build \
+            -t ghcr.io/honzah7/loadbalancer:latest \
+            -t ghcr.io/honzah7/loadbalancer:${{ github.sha }} .
+
+      # Publish both tags. Skipped on pull requests - we never publish from a PR.
+      - name: Push the image to GHCR
+        if: github.event_name == 'push'
+        run: |
+          docker push ghcr.io/honzah7/loadbalancer:latest
+          docker push ghcr.io/honzah7/loadbalancer:${{ github.sha }}
