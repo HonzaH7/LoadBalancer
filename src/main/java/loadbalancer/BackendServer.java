@@ -48,7 +48,12 @@ public class BackendServer implements Backend {
                         while ((line = in.readLine()) != null && !line.isEmpty()) {
 
                         }
-                        String response = "HTTP/1.1 200 OK\r\n\r\nHello from port: " + getPort();
+                        String host = System.getenv("HOSTNAME");
+                        if (host == null) {
+                            host = "unknown";
+                        }
+                        String response = "HTTP/1.1 200 OK\r\n\r\nHello from " + host;
+
                         connection.getOutputStream().write(response.getBytes());
                         connection.close();
                     } catch (IOException e) {
